@@ -20,9 +20,10 @@ Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` 
 
 **Where things live:**
 
+- `main.mjs` (repo root) — the Arena client's entry point. Re-exports the active variant. Rewritten by `runner/swap-variant.mjs`.
 - `src/` — bot code. Layered: commander → plays → squads → micro → intel/arena.
-- `variants/` — A/B'd strategy variants. `src/main.mjs` re-exports the active one.
-- `runner/` — build/push (no transpile yet) and variant swap.
+- `variants/` — A/B'd strategy variants. `./main.mjs` (at root) re-exports the active one.
+- `runner/` — variant swap. `push.mjs` is currently a no-op (the Arena client watches the repo directly).
 - `evaluator/` — replay parser + metrics. Phase 0 stubs; Phase 1 work.
 - `tests/` — pure-Node unit tests on tactical primitives. CI runs on every PR.
 - `docs/` — design docs. Update them when behaviour changes; they're load-bearing.

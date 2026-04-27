@@ -102,8 +102,8 @@ The full rationale, alternatives considered, and per-layer contracts are in [`do
 ## Repo layout
 
 ```
+main.mjs                    # Entry — what the Arena client loads. Re-exports the active variant.
 src/
-  main.mjs                  # Entry — what the Arena client loads. Currently re-exports the active variant.
   arena/
     rules.mjs               # CTF constants, multi-flag helpers, tower/container helpers, river bounds
     snapshot.mjs            # Per-tick world snapshot: pre-computed views consumed by all higher layers
@@ -135,9 +135,8 @@ variants/
   README.md                 # How to add a variant, naming, what to record.
 
 runner/
-  push.mjs                  # Build (no transpile yet) and copy main.mjs to the client folder
-  swap-variant.mjs          # Switch which variant src/main.mjs re-exports
-  config.mjs                # Local-only path config for the client folder
+  swap-variant.mjs          # Switch which variant ./main.mjs re-exports
+  push.mjs                  # No-op placeholder — kept for if/when we add a real build step
 
 evaluator/
   parse-replay.mjs          # Read Steam client replay zips
@@ -260,30 +259,23 @@ Phase 5+ is whatever the data tells us. We don't plan past where the evidence re
 
 ### Prereqs
 - Node ≥ 20 (`.nvmrc`).
-- The Steam client **Screeps: Arena**, with a configured local-bot folder (Preferences → "Path to your bot scripts").
-
-### One-time setup
-```sh
-cp runner/config.example.mjs runner/config.mjs
-# edit runner/config.mjs to point at your client's bot folder
-```
+- The Steam client **Screeps: Arena**, with **Preferences → "Path to your bot scripts"** set to this repo's root directory. The client loads `main.mjs` from there and follows relative imports into `./src/` and `./variants/`.
 
 ### Develop
 ```sh
 # run the unit tests for tactical primitives
 npm test
 
-# pick which variant is active (writes src/main.mjs to re-export it)
+# pick which variant is active (rewrites ./main.mjs to re-export it)
 npm run variant -- v0-baseline
 
-# build (currently a copy — no transpile) and push to the Arena client
-npm run push
-
-# after playing matches in-client, summarize what happened
+# after playing matches in-client, summarize what happened (Phase 1 — currently stubbed)
 npm run report
 ```
 
-The loop is: edit a variant → `npm test` → `npm run push` → play ≥10 ranked matches → `npm run report` → form next hypothesis.
+No `npm run push` step — the Arena client watches the repo directly, so saves are picked up live. (`npm run push` is a no-op placeholder kept for if/when we add a real build step.)
+
+The loop is: edit a variant → `npm test` → save → play ≥10 ranked matches → `/match-log` → `/ctf-report` → form next hypothesis.
 
 ## Open questions
 

@@ -1,4 +1,4 @@
-// Rewrite src/main.mjs to re-export the named variant.
+// Rewrite ./main.mjs to re-export the named variant.
 //
 // Usage: node runner/swap-variant.mjs v1-river-control
 //        npm run variant -- v1-river-control
@@ -26,14 +26,16 @@ async function main() {
     process.exit(1);
   }
 
-  const mainPath = join(ROOT, "src", "main.mjs");
+  const mainPath = join(ROOT, "main.mjs");
   const current = await readFile(mainPath, "utf8");
   const next = `// Active variant entry point — what the Arena client loads.
 //
-// runner/swap-variant.mjs rewrites this file to re-export a different variant.
-// Do not import strategy directly here; let the variant module own that decision.
+// The Steam Arena client is configured to watch the repo root and looks for
+// main.mjs here. runner/swap-variant.mjs rewrites this file to re-export a
+// different variant. Do not import strategy directly here; let the variant
+// module own that decision.
 
-export { loop } from "../variants/${name}.mjs";
+export { loop } from "./variants/${name}.mjs";
 `;
   if (current === next) {
     console.log(`already on ${name}`);
