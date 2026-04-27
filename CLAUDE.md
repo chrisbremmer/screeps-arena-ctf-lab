@@ -8,6 +8,51 @@ Competitive Screeps Arena Season 2 **Capture the Flag** bot (`Capt Munchies`), p
 
 Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` → `docs/ARCHITECTURE.md` → `docs/ITERATION-LOOP.md` → `docs/PLAYBOOK.md` → `docs/AGENTIC-WORKFLOWS.md`.
 
+## Current state (last updated 2026-04-27)
+
+**Active variant:** v6-harvest-and-focus. **Current rating:** ~307 (started placement at 445, dropped through v1-v3, climbing back via v4-v6).
+
+**Variant trajectory (record / Δ rating per 10 matches):**
+
+| Variant | Result | Key change |
+|---|---|---|
+| v0 placement | 3W-2L from 445 | baseline (cohesion broken, no towers, contest-flag) |
+| v1-hold-at-two-flags | 1W-9L, -37 | wrong hypothesis; cohesion bug upstream |
+| v2-fortress-2-flags | 2W-6L-2D, -14 | COHESION_RADIUS bug locked squad immobile |
+| v3-fortress-advancing | 2W-7L-1D, -37 | radius fixed; mechanically sound but no conversion |
+| v4-push-with-advantage | 4W-5L-1D, +2 | first net-positive: push at material advantage ≥4 |
+| v5-rush-defense | 4W-4L-2D, +5 | LittleSound's defense state + telemetry |
+| v6-harvest-and-focus | 5W-5L, +3 | river harvest + squad focus fire + healer triage |
+
+**Confirmed mechanics (don't re-investigate):**
+- Towers do **not** auto-fire — manual `tower.attack(target)` required.
+- TOWER_CAPACITY = 10, TOWER_ENERGY_COST = 10, TOWER_COOLDOWN = 10. One shot per fill, 10-tick cooldown.
+- TOWER_POWER_ATTACK = 1000 at range 1, falloff -50/tile. (Possible Steam-reported 4× bug from May 2022; verify empirically if testing tower DPS specifically.)
+- **Tower ownership transfers on flag capture** — verified via `myTowerCount` flipping 1→2→3 with captures.
+- `creep.transfer()` to non-my tower = ERR_NOT_OWNER. Cannot pre-charge neutral towers.
+- BodyPart objects on the river have `type` and `ticksToDecay` only — no zero-hits gotcha.
+- Match starts use a randomized corner: sometimes NW (mine flag at 3,3), sometimes SE (mine at 96,96). The bot is corner-agnostic via `findHomeFlag` (Chebyshev distance to home tower).
+
+**Known unsolved problems:**
+- **Repeat losses to specific bots.** `WarNeverChanges v10` beat us twice in the v6 batch — that bot has a counter we haven't identified. Recommended: open the in-client replay viewer for one of those losses; the tactical pattern will be visible immediately and is invisible in tick logs.
+- **Fast rushes (~300 tick losses)** still happen vs aggressive opponents like `promiscuousemu v2`. Rush-defense recall fires but doesn't always hold.
+- **Push-then-recapture cycle** in some long losses: `2-1-1 → 3-1-0 → 2-2-0 → 3-1-0` ending at 1-3.
+
+**Open v7 candidates** (in journal, ordered by my prior on impact):
+1. **Watch the WarNeverChanges replay** — high info value, low effort.
+2. **Disable push** (threshold = ∞) — convert push-failure losses to draws/holds.
+3. **Field v6 longer** — current rate of +3 to +5 per 10 matches compounds; sample size matters.
+
+**Known unknowns I'd want answered eventually:**
+- The 4× TOWER_POWER_ATTACK bug — is real damage 1000 or 250? Test by logging enemy `hits` before/after a single tower shot.
+- Are workers actually walking to charge the captured-neutral tower, or is the tower being charged some other way? Add per-creep position telemetry to see.
+- Spawn rate and type distribution of body parts on the river (not yet measured).
+
+**Workflow conventions specific to this stage:**
+- Each new variant gets ~10 ranked matches before evaluation.
+- Pipe console output through `pbpaste | npm run report -- --journal --opponent "<name>"` after each match (or batch).
+- The screenshot of "10 rating games" is the source of truth for W/L; tick logs sometimes cross match boundaries when the bot module isn't reloaded between matches.
+
 ## How to be useful here
 
 **Default behaviours:**
