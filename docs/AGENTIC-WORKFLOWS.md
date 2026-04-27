@@ -32,8 +32,11 @@ Loaded into every Claude Code session in this repo. Defines: where things live, 
 ### `.claude/commands/new-variant.md`
 Slash command for the variant ceremony: pick the next number, branch from the current baseline, scaffold the file + a paired test, run tests, hand the user the swap/push commands. Refuses on vague hypotheses ("make it better") because vague variants confound results. Does *not* swap the active variant — that's a human decision.
 
+### `evaluator/parse-console.mjs` + `npm run report`
+The Arena client doesn't store replays on disk — there is no replay-zip cache to parse. The console of the in-client replay viewer *is* the data source. `pbpaste | npm run report -- --journal --opponent "<name>"` reads a console paste, extracts the `[CTF]` event stream, computes flag-control / capture / cohesion metrics, and appends a structured entry to `journal/YYYY-MM-DD.md`. ~30 sec per match instead of ~5 min of writing notes.
+
 ### `.claude/commands/match-log.md`
-Slash command for capturing match outcomes into `journal/YYYY-MM-DD.md`. The replay parser doesn't exist yet (Phase 1), so this is the manual data path. Strict about "log what was observed, not what was inferred" — bad data is worse than no data here.
+Fallback slash command for cases where `npm run report` doesn't fit (no console paste, batch multi-match summary, manual flagging of things the parser missed).
 
 ### `.claude/commands/ctf-report.md`
 Slash command for the synthesis step. Reads recent journal entries, refuses if N < 10, proposes a single hypothesis with rationale and counter-arguments, hands off to the user for greenlight. Refuses to propose multiple hypotheses — we can only afford to test one at a time.

@@ -24,7 +24,7 @@ Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` 
 - `src/` — bot code. Layered: commander → plays → squads → micro → intel/arena.
 - `variants/` — A/B'd strategy variants. `./main.mjs` (at root) re-exports the active one.
 - `runner/` — variant swap. `push.mjs` is currently a no-op (the Arena client watches the repo directly).
-- `evaluator/` — replay parser + metrics. Phase 0 stubs; Phase 1 work.
+- `evaluator/` — `parse-console.mjs` extracts `[CTF]` events from a pasted console blob; `metrics.mjs` computes per-match KPIs; `report.mjs` is the CLI (`npm run report`). Phase 1 is wired here. There is no replay-zip cache on disk — the Arena client only stores cached HTTP assets, not match state. Don't reach for one.
 - `tests/` — pure-Node unit tests on tactical primitives. CI runs on every PR.
 - `docs/` — design docs. Update them when behaviour changes; they're load-bearing.
 - `journal/` — match outcome notes (created lazily by the `/match-log` skill).

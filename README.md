@@ -268,14 +268,25 @@ npm test
 
 # pick which variant is active (rewrites ./main.mjs to re-export it)
 npm run variant -- v0-baseline
-
-# after playing matches in-client, summarize what happened (Phase 1 — currently stubbed)
-npm run report
 ```
 
-No `npm run push` step — the Arena client watches the repo directly, so saves are picked up live. (`npm run push` is a no-op placeholder kept for if/when we add a real build step.)
+No `npm run push` step — the Arena client watches the repo directly, so saves are picked up live.
 
-The loop is: edit a variant → `npm test` → save → play ≥10 ranked matches → `/match-log` → `/ctf-report` → form next hypothesis.
+### Capturing match data
+
+After every match, open the in-client replay viewer and copy the entire console pane (`Cmd+A`, `Cmd+C`). Then:
+
+```sh
+# read paste from clipboard, render a markdown summary, append to today's journal
+pbpaste | npm run report -- --journal --opponent "<their handle>"
+
+# or from a saved file
+npm run report -- --file ./scratch/match7.txt --journal --opponent "<their handle>"
+```
+
+The parser tolerates line numbers, tabs, and wrapped multi-event lines from the in-client console — just paste the whole thing and it extracts what it needs. Structured output goes to `journal/YYYY-MM-DD.md`.
+
+The loop is: edit a variant → `npm test` → save → play ≥10 ranked matches → `pbpaste | npm run report -- --journal` per match → `/ctf-report` → form next hypothesis.
 
 ## Open questions
 

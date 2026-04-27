@@ -2,7 +2,12 @@
 description: Record the outcome of a recent batch of ranked matches into journal/
 ---
 
-The user just played some ranked matches and wants to capture what happened before they lose the details. The replay parser doesn't work yet (Phase 1), so this is the manual data path that feeds `/ctf-report`.
+The user just played some ranked matches and wants to capture what happened. The fast path is `pbpaste | npm run report -- --journal --opponent "<name>"` per match, which auto-extracts a structured entry. Use that whenever the user has a console paste.
+
+This skill exists for the cases where:
+- The user only has a written summary (didn't grab the console).
+- Multiple matches need batched into one note.
+- The auto-parser missed something the user wants to flag manually.
 
 ## What to do
 
