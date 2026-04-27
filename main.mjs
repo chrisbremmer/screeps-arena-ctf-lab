@@ -5,4 +5,4 @@
 // different variant. Do not import strategy directly here; let the variant
 // module own that decision.
 
-export { loop } from "./variants/v0-baseline.mjs";
+export { loop } from "./variants/v2-fortress-2-flags.mjs";
