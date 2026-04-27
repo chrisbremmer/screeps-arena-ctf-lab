@@ -1,18 +1,20 @@
 // Group geometry helpers. v0 uses a centroid; future formations slot in here.
-//
-// COHESION_RADIUS is duplicated here rather than imported from arena/rules.mjs
-// so this module stays pure (rules.mjs imports the runtime `game` package).
 
-const COHESION_RADIUS = 3;
+// Default cohesion radius. Variants can override via squad.cohesionRadius.
+// Note on the value: starting positions span a 7×7 box (initial spread = 7),
+// so a radius below 7 traps the squad in cohesion mode at tick 0 and the
+// squad never advances. Default of 7 matches the initial formation; cohesion
+// engages only when the squad sprawls beyond its starting footprint.
+export const DEFAULT_COHESION_RADIUS = 7;
 
 // Pick the move-toward target for a creep in this squad. When cohesion is
-// enforced and the squad's spread exceeds COHESION_RADIUS, route the creep
-// toward the centroid — the front waits naturally (centroid is behind them
-// in the direction of travel) and stragglers catch up. Otherwise the creep
-// proceeds toward the squad's advance target.
+// enforced and the squad's spread exceeds the cohesion radius, route the
+// creep toward the centroid — stragglers catch up while the front holds
+// position. Otherwise the creep proceeds toward the squad's advance target.
 export function squadMoveTarget(squad) {
   if (!squad) return null;
-  if (squad.cohesionEnforced && squad.centroid && squad.spread > COHESION_RADIUS) {
+  const radius = squad.cohesionRadius ?? DEFAULT_COHESION_RADIUS;
+  if (squad.cohesionEnforced && squad.centroid && squad.spread > radius) {
     return squad.centroid;
   }
   return squad.advanceTarget ?? null;

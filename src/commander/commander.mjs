@@ -24,6 +24,7 @@ let _initLogged = false;
 export function tick(options = {}) {
   const mainPlay = options.mainPlay ?? assignContestFlag;
   const cohesionEnforced = options.cohesionEnforced === true;
+  const cohesionRadius = options.cohesionRadius;
   const operateTowers = options.operateTowers === true;
   const snapshot = buildSnapshot();
 
@@ -53,6 +54,7 @@ export function tick(options = {}) {
   // Plays.
   for (const squad of squads) {
     squad.cohesionEnforced = cohesionEnforced;
+    if (cohesionRadius !== undefined) squad.cohesionRadius = cohesionRadius;
     if (squad.name === "main") mainPlay(squad, snapshot);
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
     else if (squad.name === "workers") {
