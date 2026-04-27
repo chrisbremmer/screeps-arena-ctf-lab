@@ -82,6 +82,15 @@ export function tick(options = {}) {
       enemyFlagCount: snapshot.enemyFlags.length,
       neutralFlagCount: snapshot.neutralFlags.length,
       mainSpread: squads.find((s) => s.name === "main")?.spread ?? 0,
+      // v5 diagnostic telemetry.
+      myTowerCount: snapshot.myTowers.length,
+      myTowerEnergy: snapshot.myTowers.map((t) => t.store?.energy ?? t.store?.["energy"] ?? 0),
+      flagThreats: snapshot.myFlags.map((f) => ({
+        x: f.x,
+        y: f.y,
+        enemiesIn25: (snapshot.findInRange(f, snapshot.enemyCreeps, 25) || []).length,
+      })),
+      mainObjective: squads.find((s) => s.name === "main")?.objective?.kind ?? null,
     });
   }
 
