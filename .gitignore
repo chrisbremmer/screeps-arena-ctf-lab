@@ -13,3 +13,6 @@ evaluator/cache/
 # Editor
 .vscode/
 .idea/
+
+# Local-only paste captures and adhoc workspace
+scratch/

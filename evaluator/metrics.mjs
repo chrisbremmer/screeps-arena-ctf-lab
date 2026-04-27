@@ -3,6 +3,23 @@
 
 const STARTING_FLAGS = { my: 1, enemy: 1, neutral: 2 };
 
+// Split a multi-match event stream by `init` boundaries. Each `init` starts a
+// new match; events between inits belong to the prior match. Returns an array
+// of per-match event arrays (always at least one, even if no init was seen).
+export function splitMatches(events) {
+  const matches = [];
+  let current = [];
+  for (const e of events) {
+    if (e.event === "init" && current.length > 0) {
+      matches.push(current);
+      current = [];
+    }
+    current.push(e);
+  }
+  if (current.length > 0) matches.push(current);
+  return matches.length > 0 ? matches : [[]];
+}
+
 export function computeMetrics(events) {
   const init = events.find((e) => e.event === "init") ?? null;
   const carry = events.find((e) => e.event === "carry-present");

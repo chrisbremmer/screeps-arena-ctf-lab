@@ -10,7 +10,7 @@ import { readFile, writeFile, access, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseConsole } from "./parse-console.mjs";
-import { computeMetrics } from "./metrics.mjs";
+import { computeMetrics, splitMatches } from "./metrics.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -36,14 +36,30 @@ async function main() {
     process.exit(2);
   }
 
-  const metrics = computeMetrics(events);
+  const matches = splitMatches(events);
   const variant = flags.variant ?? (await detectActiveVariant());
   const opponent = flags.opponent ?? "(unknown)";
-  const result = flags.result ?? toResultLetter(metrics.outcome);
   const note = flags.note ?? null;
 
-  const md = renderMarkdown({ metrics, variant, opponent, result, note });
+  const reports = matches.map((matchEvents, i) => {
+    const metrics = computeMetrics(matchEvents);
+    const result = flags.result ?? toResultLetter(metrics.outcome);
+    return renderMarkdown({
+      metrics,
+      variant,
+      opponent,
+      result,
+      note,
+      matchNumber: matches.length > 1 ? i + 1 : null,
+    });
+  });
+
+  const md = reports.join("\n");
   console.log(md);
+
+  if (matches.length > 1) {
+    console.error(`report: parsed ${matches.length} matches from a multi-match paste.`);
+  }
 
   if (flags.journal) {
     await appendJournal(md);
@@ -84,10 +100,10 @@ function toResultLetter(outcome) {
   return "?";
 }
 
-function renderMarkdown({ metrics, variant, opponent, result, note }) {
+function renderMarkdown({ metrics, variant, opponent, result, note, matchNumber }) {
   const lines = [];
-  const matchNumber = "?"; // The user can edit before committing if they care.
-  lines.push(`## Match ${matchNumber} — ${variant} — ${result}`);
+  const label = matchNumber ?? "?";
+  lines.push(`## Match ${label} — ${variant} — ${result}`);
   lines.push("");
   lines.push(`**Opponent:** ${opponent}`);
   lines.push(`**Length:** ${metrics.finalTick} ticks`);
