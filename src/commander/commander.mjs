@@ -1,13 +1,13 @@
 // Top-level tick orchestrator. Builds squads, picks plays, dispatches.
 //
-// v0 allocation:
+// Default allocation (preserved as v0 behavior when called without options):
 //   - Workers (creeps with CARRY) → charge-tower play, ferry energy.
 //   - One healer → defend-flag play, sentry our home flag.
 //   - Everyone else → contest-flag play, capture the closest non-our flag.
 //
-// We deliberately run the contest squad against the closest non-our flag at
-// each tick so the squad re-targets after a successful capture. There's no
-// long-horizon planning here — Phase 2+ owns that.
+// Variants override the main-squad behaviour by passing `options.mainPlay`
+// to `tick(options)`. The signature is `(squad, snapshot) → void`. The
+// default is `assignContestFlag`. tickV0 calls tick() with no options.
 
 import { buildSnapshot } from "../arena/snapshot.mjs";
 import { logEvent, logTick } from "../arena/log.mjs";
@@ -20,7 +20,8 @@ import { pickStrategy, readEnemyComp } from "./strategy.mjs";
 
 let _initLogged = false;
 
-export function tickV0() {
+export function tick(options = {}) {
+  const mainPlay = options.mainPlay ?? assignContestFlag;
   const snapshot = buildSnapshot();
 
   if (!_initLogged) {
@@ -48,7 +49,7 @@ export function tickV0() {
 
   // Plays.
   for (const squad of squads) {
-    if (squad.name === "main") assignContestFlag(squad, snapshot);
+    if (squad.name === "main") mainPlay(squad, snapshot);
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
     else if (squad.name === "workers") {
       // Workers: assign each ferry task to its creep, then any unassigned worker
@@ -80,6 +81,11 @@ export function tickV0() {
   if (snapshot.myFlags.length === 0) {
     logEvent("lost-all-my-flags", { tick: snapshot.tick });
   }
+}
+
+// v0 entrypoint — preserves the baseline behavior. Variants call tick(options) directly.
+export function tickV0() {
+  return tick();
 }
 
 function logFirstTick(snapshot) {
@@ -128,5 +134,3 @@ function logFirstTick(snapshot) {
   logEvent("carry-present", { value: snapshot.myCreeps.some((c) => c._hasCarry) });
 }
 
-// Re-export under the previous name for variant compatibility.
-export { tickV0 as tick };
