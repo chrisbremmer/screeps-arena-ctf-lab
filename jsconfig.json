@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "paths": {
+      "game/*": ["./typings/game/*"]
+    }
+  },
+  "screepsArena": {
+    "typingsVersion": "1.2.0",
+    "disableAutoUpdate": false
+  },
+  "include": ["src/**/*", "variants/**/*", "runner/**/*", "evaluator/**/*", "tests/**/*"]
+}

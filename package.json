@@ -1,0 +1,16 @@
+{
+  "name": "screeps-arena-ctf-lab",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Competitive Screeps Arena (Season 2) Capture-the-Flag bot + agentic iteration harness",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "push": "node runner/push.mjs",
+    "variant": "node runner/swap-variant.mjs",
+    "report": "node evaluator/report.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

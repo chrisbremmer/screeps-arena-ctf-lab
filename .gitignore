@@ -1,0 +1,15 @@
+node_modules/
+.DS_Store
+dist/
+build/
+*.log
+.env
+.env.local
+
+# Local replay cache copies (originals live in the Steam client cache)
+replays/raw/
+evaluator/cache/
+
+# Editor
+.vscode/
+.idea/
