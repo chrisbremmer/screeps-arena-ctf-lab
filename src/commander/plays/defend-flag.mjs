@@ -1,5 +1,12 @@
-// Defend-flag play: a creep parks within range 1 of our flag and defends it.
+// Defend-flag play: park the squad on or adjacent to one of our flags.
+// v0 always defends the first flag we own (which is the home flag at match start).
 
 export function assignDefendFlag(squad, snapshot) {
-  squad.advanceTarget = snapshot.myFlag || squad.advanceTarget;
+  const flag = snapshot.myFlags[0];
+  if (!flag) {
+    squad.advanceTarget = null;
+    return;
+  }
+  squad.advanceTarget = flag;
+  squad.objective = { kind: "defend-flag", flag };
 }

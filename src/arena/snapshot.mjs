@@ -3,31 +3,37 @@
 
 import { utils } from "game";
 import {
-  getMyFlag,
-  getEnemyFlag,
+  getMyFlags,
+  getEnemyFlags,
+  getNeutralFlags,
+  getCaptureTargets,
   getMyCreeps,
   getEnemyCreeps,
   getMyTowers,
   getEnemyTowers,
+  getNeutralTowers,
+  getAllContainers,
 } from "./rules.mjs";
-import { classifyRole } from "../intel/body.mjs";
+import { classifyRole, countParts, PART } from "../intel/body.mjs";
 
 export function buildSnapshot() {
   const tick = utils.getTicks();
-  const myFlag = getMyFlag();
-  const enemyFlag = getEnemyFlag();
 
   const myCreeps = getMyCreeps().map(decorate);
   const enemyCreeps = getEnemyCreeps().map(decorate);
 
   return {
     tick,
-    myFlag,
-    enemyFlag,
+    myFlags: getMyFlags(),
+    enemyFlags: getEnemyFlags(),
+    neutralFlags: getNeutralFlags(),
+    captureTargets: getCaptureTargets(),
     myCreeps,
     enemyCreeps,
     myTowers: getMyTowers(),
     enemyTowers: getEnemyTowers(),
+    neutralTowers: getNeutralTowers(),
+    containers: getAllContainers(),
     range: utils.getRange,
     findClosestByPath: utils.findClosestByPath,
     findInRange: utils.findInRange,
@@ -36,8 +42,10 @@ export function buildSnapshot() {
 }
 
 function decorate(creep) {
-  // Attach role and body summary as non-enumerable hints. We don't mutate the
-  // game object's identity — these are advisory.
+  // Attach role and part counts as advisory hints. We don't mutate the game
+  // object's identity — these are reads-only conveniences.
   creep._role = classifyRole(creep);
+  creep._parts = countParts(creep);
+  creep._hasCarry = creep._parts[PART.CARRY] > 0;
   return creep;
 }

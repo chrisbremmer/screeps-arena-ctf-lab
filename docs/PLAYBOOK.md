@@ -11,6 +11,46 @@ Each entry is:
 > **Counter.** What beats it, so we know what to watch for.
 > **Status.** `theorized` (no data yet), `tested` (has match evidence), `meta` (currently active in baseline).
 
+## Economy and tower control
+
+### Charge home tower as priority 1
+**Tactic.** Any creep with `CARRY` capacity ferries energy from the home container to the home tower until the tower is at capacity, before contributing to combat.
+**Why.** A charged home tower changes a flag-rush from "trivial loss" to "trivial defense." It's the highest-leverage early action available — assuming we have any creep with `CARRY`.
+**Counter.** Pressure the ferrying creep with a single ranger early. The ferry is high-value, low-HP, and predictable.
+**Status.** theorized — gated on confirming `CARRY` exists in starting bodies.
+
+### Contest the closer neutral tower over the farther one
+**Tactic.** When committing to a neutral flag, pick the one with shorter expected travel for the contesting squad. Don't split between both unless we have squad-strength to spare.
+**Why.** The flag-count win condition rewards holding ≥3 of 4. Holding 1 home + 1 neutral = 2, which is the draw floor. Holding 2 neutrals + home = 3, which is the win floor against any opponent who hasn't captured anything else.
+**Counter.** Race us to the same neutral, force a fight before either side has tower coverage. Whoever wins the firefight wins the flag.
+**Status.** theorized.
+
+### Don't bother charging a neutral tower until we own its flag
+**Tactic.** Charge-tower play only targets towers whose linked flag we currently own.
+**Why.** A captured tower's energy benefits whoever owns the flag. Charging a tower we don't own gives the enemy a free defensive bonus.
+**Counter.** None — this is just correct play.
+**Status.** theorized — needs confirmation that captured-flag transfers tower control.
+
+## Flag dynamics
+
+### Always hold ≥2 flags after tick 1500
+**Tactic.** As tick 1500 approaches, if we hold 2+ flags, prioritize defending them over capturing more.
+**Why.** Tick-out tie-break is flag count. Holding 2 flags is a guaranteed non-loss; risking one to capture a third can convert a draw into a loss if the trade fails.
+**Counter.** Force us into a fight near a flag we hold; if we engage we may lose the defender. Counter-counter: tower coverage means engagements near our flag are heavily one-sided.
+**Status.** theorized.
+
+### Capture-the-tile semantics (verify in-client)
+**Tactic.** Path planning treats the flag tile itself as the destination, not adjacent tiles. The capturing creep ends its tick on the flag.
+**Why.** The mechanic is "step on the flag." Adjacent isn't capture.
+**Counter.** Block the flag tile with an enemy creep; we can't capture if the tile is occupied. (Also one of our open questions — see CTF-RULES.md.)
+**Status.** theorized — depends on whether the game tolerates ending a tick on a flag tile when adjacent enemies are present.
+
+### Sentry on every flag we own
+**Tactic.** A single defender (ideally a healer with tower coverage) holds within range 1 of each flag we own.
+**Why.** Capture is a single-creep action — one sneaky enemy creep is enough. A sentry that survives one ranged hit and gets healed by the tower stops the cheese.
+**Counter.** Coordinate two captures across two flags simultaneously; we can't sentry everywhere with our limited starting force.
+**Status.** theorized.
+
 ## Movement & positioning
 
 ### Centroid pathing
@@ -79,12 +119,6 @@ Each entry is:
 
 ## Flag dynamics
 
-### One healer sentry on home flag
-**Tactic.** A single healer is parked within range 1 of the home flag for the full match, except if explicitly recalled by the commander.
-**Why.** A flag rush by a single low-HP enemy creep is otherwise free; one healer + tower fire is enough to kill them.
-**Counter.** Dedicate two creeps to the rush instead of one. Forces our sentry to choose targets and the tower to spread fire.
-**Status.** theorized.
-
 ### Detect rushes by tick 300 enemy centroid
 **Tactic.** If the enemy squad's centroid has crossed the river by tick 300, classify the match as "rush" and recall river-control creeps to defensive positioning.
 **Why.** River control is ahead-on-tempo; flag race is ahead-on-distance. If they're racing, we don't have time to grow.
@@ -92,9 +126,9 @@ Each entry is:
 **Status.** theorized.
 
 ### Flag carrier = whoever is closest with the cleanest path
-**Tactic.** When the squad is committed to the flag, the designated carrier is the surviving creep with the lowest path cost to the enemy flag, regardless of role. The rest of the squad covers them.
-**Why.** Role doesn't matter for capture — only adjacency to the flag tile does. Healers on the flag work fine.
-**Counter.** Block the flag tile with an enemy creep; we can't capture if blocked. (Confirm in-client.)
+**Tactic.** When a squad is committed to capturing a flag (any non-our flag), the designated carrier is the surviving member with the lowest path cost to the flag tile, regardless of role. The rest of the squad covers them.
+**Why.** Role doesn't matter for capture — only ending a tick on the tile does. Healers on the flag tile work fine.
+**Counter.** Block the flag tile with an enemy creep; we can't capture if the tile is occupied. (Confirm in-client.)
 **Status.** theorized.
 
 ## Strategy detection

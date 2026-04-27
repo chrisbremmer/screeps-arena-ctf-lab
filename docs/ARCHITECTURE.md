@@ -90,6 +90,7 @@ Pure functions. No side effects, no game-API calls. Take a snapshot (and possibl
 - `body.effective(creep)` → `{dps, healPerTick, hpEffective, fatigueGen, moveCount}`
 - `body.growthRecommendation(creep, snapshot)` → `{partType, score, sourcePos}` or `null`
 - `target.pick(squad, candidates, snapshot)` → creep | null
+- `economy.towerChargePlan(snapshot)` → `{tower, source, ferries[]}[]` — which towers to charge, from which container, with which creeps. Returns `[]` if no `CARRY`-bearing creeps exist (we don't yet know whether starting bodies include `CARRY` — see `docs/CTF-RULES.md`).
 
 ### `micro/`
 

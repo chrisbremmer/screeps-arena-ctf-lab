@@ -29,26 +29,26 @@ The tradeoff: CTF is also where the strongest players concentrate. We are climbi
 
 ## Capture the Flag — what the game actually is
 
-A condensed working summary. The full version with sources lives at [`docs/CTF-RULES.md`](docs/CTF-RULES.md), and that doc is also where we track open questions to verify in-client.
+A condensed working summary, sourced from the in-app description. The full version with open questions lives at [`docs/CTF-RULES.md`](docs/CTF-RULES.md).
 
-- **Map.** 100×100 grid, opponents in opposite corners, a swamp **river** running through the middle.
-- **Win condition.** Capture all enemy flags. In **basic** there's one flag per side, so it reduces to: get any one of your creeps onto the enemy flag tile.
-- **Starting forces.** ~14 pre-spawned creeps per side, each starting with 4 of one role part (`ATTACK`, `RANGED_ATTACK`, or `HEAL`) plus 4 `MOVE`. Two static towers per side near the home flag.
-- **Body growth.** `BodyPart` objects spawn on the river and decay over time. Stepping a creep onto one adds that part to the creep's body. **There is no other way to grow a creep**, no boosts, no economy. Adding role parts without matching `MOVE` increases fatigue.
-- **No economy.** No `Source`, no `StructureSpawn`, no `Container`, no construction in basic CTF.
-- **Match length.** ~2000 ticks. Read it from `arenaInfo.ticksLimit` — don't hard-code.
-- **Vision.** Full vision of the map. No fog of war.
-- **Tie-break.** Not publicly documented. Open question — verify in-client. We design assuming a tie is bad and we'd rather force a decision.
+- **Map.** Opposing corners, a swamp **river** running through the middle, mid-map contested objectives.
+- **Win condition.** Leave the opponent with **zero flags**. Stepping a creep onto a non-our flag captures it.
+- **4 flags total.** 1 at our base + 1 at theirs + **2 neutral mid-map flags**. Each flag has a tower linked to it. Neutral flags are capture targets for both sides.
+- **Towers must be charged.** Every tower starts empty. A tower with no energy is inert. Energy comes from **containers** placed near every tower; a creep with `CARRY` capacity ferries it into the tower. Tower-charging tempo is a strategic dimension, not a side-quest.
+- **Starting forces.** 14 creeps per side with **mixed bodies**. Read the actual mix on tick 1; don't hard-code. We don't yet know whether starting creeps include `CARRY` — it's the highest-priority open question.
+- **Body growth.** `BodyPart` objects spawn on the river. Confirmed types: `RANGED_ATTACK`, `ATTACK`, `HEAL`, `MOVE`. Stepping a creep onto one adds that part to its body **at zero hits** — fragile, but the capability is immediate.
+- **Match length.** **2000 ticks.** Read from `arenaInfo.ticksLimit` regardless.
+- **Tick-out tie-break.** Whoever controls more flags. Equal counts = draw. Holding ≥2 flags at tick 2000 is a guaranteed non-loss.
 
 ## Strategic thesis
 
-The brief from the research pass and the public meta point to a concrete order-of-importance for what wins matches:
+Five priorities, ordered by expected leverage. This list reflects the actual arena mechanics — earlier drafts of this README were based on an older design and have been corrected.
 
-1. **River control.** Body parts on the river compound. A bot that systematically harvests the river while the opponent ignores it ends the match with substantially more effective firepower. This is the single highest-leverage thing to get right.
-2. **Group cohesion + healer placement.** Naive flag-rush loses to a competent kiting opponent. Squads that move as a centroid, with healers protected and rangers extending only into healer range, beat looser formations consistently.
-3. **Target prioritization.** Focus-fire on the lowest-effective-HP threat in range, especially enemy healers. Splash damage (`rangedMassAttack`) when surrounded.
-4. **Strategy detection + counter-play.** On tick 1 we can read the enemy's body composition. Heavy-ranged opponents play differently from melee-heavy. Switch our play accordingly instead of running one rigid plan.
-5. **Defensive sentry.** One healer parked under our towers near our flag costs cheap and prevents the cheesy single-runner rush.
+1. **Tower-charging tempo.** Whichever side gets a charged tower first in any region (home, neutral, enemy) dominates that region. The home tower is the cornerstone of defensive viability; the neutral towers anchor the mid-map fight.
+2. **Flag count over flag identity.** The win condition counts flags, not which flag. A captured neutral is as valuable as a captured enemy flag. Optimize for ending with ≥3 flags or, at minimum, ≥2.
+3. **River control.** Body parts compound effective firepower. Pickup priority should reflect what the squad needs — `MOVE` to keep up, then role parts that the squad lacks. Zero-hit fragility means a freshly-grown creep is also more vulnerable.
+4. **Group cohesion + healer placement.** Squads that hold formation outdamage and outheal squads that don't. Healers under tower coverage and within heal-range of their squad is the baseline.
+5. **Strategy detection + counter-play.** Read enemy composition on tick 1 and their early movement to classify their plan (rush / contest mid / defend). Switch our play instead of running one rigid plan.
 
 Concrete tactics that fall out of those priorities live in [`docs/PLAYBOOK.md`](docs/PLAYBOOK.md).
 
@@ -105,17 +105,16 @@ The full rationale, alternatives considered, and per-layer contracts are in [`do
 src/
   main.mjs                  # Entry — what the Arena client loads. Currently re-exports the active variant.
   arena/
-    rules.mjs               # CTF constants, helpers (own/enemy flag, river bounds, body-part objects)
+    rules.mjs               # CTF constants, multi-flag helpers, tower/container helpers, river bounds
     snapshot.mjs            # Per-tick world snapshot: pre-computed views consumed by all higher layers
     log.mjs                 # Structured logging emitted into match output for the evaluator to parse
   commander/
     commander.mjs           # Top-level tick orchestrator
     strategy.mjs            # Strategy detection (read enemy comp, classify), play selection
     plays/
-      rush-flag.mjs
-      river-control.mjs
-      defend-flag.mjs
-      regroup.mjs
+      contest-flag.mjs      # Squad targets a non-our flag (enemy or neutral) for capture
+      defend-flag.mjs       # Sentry/recall behaviour on a flag we own
+      charge-tower.mjs      # CARRY-bearing creeps ferry energy from container → tower
   squads/
     squad.mjs               # Squad: members + target + formation
     formation.mjs           # Centroid pathing, cohesion checks, role slots
@@ -123,11 +122,13 @@ src/
     ranger.mjs              # rangedAttack target prio, kite at range < 3
     healer.mjs              # heal vs rangedHeal allocation, retreat-when-isolated
     melee.mjs               # engage, attack, fall back when below threshold
+    worker.mjs              # CARRY ferry: withdraw from container, transfer to tower
     move.mjs                # Path helpers, fatigue-aware step picking
   intel/
     threat.mjs              # Per-enemy threat score (DPS, range, healers nearby)
     body.mjs                # Effective body stats, fatigue projection, growth recommendations
     target.mjs              # Target prioritization across the squad
+    economy.mjs             # Tower charge level, container reserves, energy ferry plan
 
 variants/
   v0-baseline.mjs           # First measurable strategy. main.mjs re-exports this initially.
@@ -223,27 +224,32 @@ Phase boundaries are deliberate — each one delivers a measurable jump and unbl
 
 ### Phase 0 — Baseline (this commit)
 - Layered scaffolding in place.
-- `variants/v0-baseline.mjs` — minimal CTF strategy: classify creeps by body, single squad, rush enemy flag, ranger kite + healer protect + melee engage. **Intentionally weak.** Its job is to be the floor we measure against.
-- Docs and iteration loop documented.
+- `variants/v0-baseline.mjs` — minimal multi-flag CTF strategy: classify creeps by body, capture closest non-our flag, charge home tower if we have CARRY-bearing creeps, defend home flag with a sentry. **Intentionally weak.** Its job is to be the floor we measure against and to log the data we need to answer the open questions.
+- Docs, iteration loop, and agentic-workflow plan documented.
 
 ### Phase 1 — Telemetry & evaluator
-- Structured logging from the bot (`arena/log.mjs`).
+- Structured logging from the bot (already wired in `arena/log.mjs`).
 - Replay zip parser (`evaluator/parse-replay.mjs`).
-- Per-match metrics: time-to-flag, river-parts-captured, KDR by role, average squad cohesion radius, % ticks with fatigue > 0.
+- Per-match metrics: flag-control history, time-to-first-tower-charge, river-parts-captured, KDR by role, average squad cohesion radius, % ticks with fatigue > 0.
 - `npm run report` produces a Claude-consumable summary.
 - **Exit criterion:** we can read 10 ranked matches and articulate, with numbers, *why* we lost.
 
-### Phase 2 — River control v1
-- `commander/plays/river-control.mjs` with a real prioritization (which body part to grab, who should grab it, when to abort).
-- `intel/body.mjs` projects fatigue if we add part X to creep Y, declines pickups that would slow the squad.
-- **Exit criterion:** measurable +N% body-parts-captured vs v0 with non-negative win rate.
+### Phase 2 — Tower-charging tempo
+- Real `charge-tower` play with priority logic: home tower first, then nearest neutral.
+- `intel/economy.mjs` projects expected tower-up time given current ferry capacity.
+- **Exit criterion:** measurable +N% time-with-charged-home-tower vs v0 with non-negative win rate.
 
-### Phase 3 — Strategy detection + counter-plays
+### Phase 3 — River control
+- `commander/plays/river-control.mjs` with real pickup prioritization (which part, who should grab it, when to abort).
+- Fatigue projection declines pickups that would slow the squad below cohesion speed.
+- **Exit criterion:** +N% body-parts-captured vs v0 with non-negative win rate.
+
+### Phase 4 — Strategy detection + counter-plays
 - Read enemy composition on tick 1 + early movement signal.
-- Branch into `rush-flag` / `river-control` / `defend-flag` based on the read.
-- A/B against v2 in ranked, keep what wins.
+- Branch into rush / contest-mid / defend based on the read.
+- A/B against v3 in ranked, keep what wins.
 
-### Phase 4 — Squad micro polish
+### Phase 5 — Squad micro polish
 - Cohesion-aware ranger kiting (don't kite out of healer range).
 - Healer triage with a real damage-rate model.
 - Target priority: enemy healers > low-HP threats > nearest.
@@ -281,13 +287,16 @@ The loop is: edit a variant → `npm test` → `npm run push` → play ≥10 ran
 
 ## Open questions
 
-These are unresolved as of writing. We will answer them empirically inside the client, not by guessing. Tracked in [`docs/CTF-RULES.md`](docs/CTF-RULES.md).
+These are unresolved as of writing. We answer them empirically inside the client, not by guessing. Tracked in [`docs/CTF-RULES.md`](docs/CTF-RULES.md).
 
-- Exact mix among the 14 starting creeps in 2026 basic CTF (rangers / healers / melee).
-- Tie-breaking rule when `ticksLimit` is reached.
+- **Top priority:** do any of the 14 starting creeps have `CARRY` parts? If not — and `CARRY` doesn't spawn on the river — tower-charging may be impossible and the entire economy story collapses. v0 logs tick-1 body composition specifically to answer this.
+- Whether all 4 body-part icons (R/A/H/M) are actually exhaustive of what spawns on the river.
+- Whether new (zero-hit) body parts regenerate hits over time.
+- Tower behaviour once charged: auto-fire, or driven via intents (`tower.attack`/`heal`/`repair`)?
+- Whether containers refill or contain a fixed starting amount.
+- Whether stepping on a flag captures instantly or requires ending the tick on it.
 - Whether replay zips have a stable schema we can parse without reverse-engineering each season.
-- Whether the matchmaker biases toward similar-rank opponents early (affects how much signal we get from the first 20 games).
-- Whether Season 2 changed any rule beyond disabling `Date` in player code.
+- Whether the matchmaker biases toward similar-rank opponents early.
 
 ## Status
 

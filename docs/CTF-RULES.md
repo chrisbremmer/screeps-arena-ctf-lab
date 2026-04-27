@@ -1,121 +1,107 @@
 # Capture the Flag — verified rules and open questions
 
-This is the working reference for what the basic CTF arena actually does. Some entries are confirmed by official sources; others are inferred from public community write-ups (mostly 2022 era) and need verification in-client. Each section flags its source confidence.
+**Source of truth:** the in-app description on the Capture the Flag (Basic level, β) arena card. Rules below match that description verbatim where quoted; community/2022-era write-ups are *not* authoritative for this version of the arena and have been removed from this doc. Anything still uncertain is in the [Open questions](#open-questions) section.
 
 ## Win condition
 
-**Confirmed.** From the typed schema:
+> *Capture all enemy Flags by stepping on them with one of your creeps before they capture yours. To win, you must leave your opponent with **zero Flags at the same moment**.*
 
-> *Flag … Capture all flags to win the game.*  ([typed-screeps-arena flag.d.ts](https://raw.githubusercontent.com/screepers/typed-screeps-arena/season-beta/dist/arena/season_beta/capture_the_flag/basic/prototypes/flag.d.ts))
+So:
 
-Each `Flag` exposes `my: boolean | undefined`. Neutral flags read `undefined`; ownership flips to `true` once captured. In **basic** there is one flag per side, so the win condition reduces to: **step any one of your creeps onto the enemy flag's tile**.
+- "Capturing" a flag = stepping a creep on its tile.
+- A captured flag becomes yours (`my === true`).
+- You win the instant the opponent has zero flags they own.
+- "At the same moment" matters: if you and the opponent each capture each other's last flag on the same tick, the win condition isn't met for either of you (both still have ≥1).
 
-Advanced CTF has 3 flags (2 corner + 1 center, 1 tower over the center one). Out of scope for now.
+## Map and starting setup
 
-## Map layout
+- 14 creeps per side with **mixed body compositions** ("different bodies" — read the actual mix from `MY_CREEPS` on tick 1, don't assume).
+- **Per side at base:** 1 flag + 1 *empty* tower + (presumed) containers near the tower with energy.
+- **Mid-map, neutral:** **2 additional flags**, each linked to its own tower. Containers near every tower.
+- **Map total: 4 flags** (mine, enemy's, 2 neutrals) and **4 towers** (mine, enemy's, 2 neutrals at mid-map flags).
+- A swamp **river** runs across the middle. Body-part objects spawn on it.
 
-**Confirmed by community sources, not the official typings.**
+## Towers — must be charged
 
-- **100×100 grid.**
-- Opponents start in opposite corners.
-- A **swamp river** runs through the middle of the map, with `BodyPart` objects spawning on it.
-- Each side has **2 static towers** near its home flag (basic was reduced from a higher count in the April 2022 changelog).
+> *The Towers must be charged with energy to deal damage or heal. Energy is available in multiple Containers near every tower.*
 
-Source: [Steam changelog Aug 2021](https://steamcommunity.com/app/1137320/discussions/0/3078754800913642994/?ctp=3), summarized by Winsley.
+Every tower starts empty. A tower with no energy is inert. To use a tower:
 
-## Starting forces
+1. A creep with `CARRY` capacity must `withdraw` energy from a nearby container.
+2. That creep must `transfer` the energy into the tower.
+3. The tower can then be commanded (or auto-fires? — see [Open questions](#open-questions)).
 
-**Partially confirmed.**
+Implication: tower-charging tempo is a strategic dimension. The first side to charge their home tower has a significant defensive advantage; the first side to charge a neutral tower wins the mid-map fight around that flag.
 
-- ~14 creeps per side. Confirmed across multiple community sources.
-- Each starting creep has **4 of one role part (`ATTACK`, `RANGED_ATTACK`, or `HEAL`) + 4 `MOVE`**.
-- The starter JS code classifies creeps by which role part they carry — read role from body, don't hard-code per-position.
+## Body parts on the river
 
-**Open question:** the exact mix among the 14 (e.g. 4 rangers / 4 healers / 4 melee / 2 misc). The starter code reads it dynamically from `MY_CREEPS` — we should do the same.
+> *There are items called BodyPart that are generated sometimes in the middle of the river. When your creep steps on such an object, an additional body part gets added to its body **(with zero hits)**.*
 
-## Body growth — the core CTF mechanic
+- Spawn types confirmed in the description's icons: **R (RANGED_ATTACK), A (ATTACK), H (HEAL), M (MOVE)**. `CARRY` and `WORK` are *not* shown — see [Open questions](#open-questions).
+- New parts are added at **zero hits**. They contribute to body length and effective capability but do *not* tank damage. The next damage instance can destroy them.
+- Strategic implication: a creep that just picked up a `RANGED_ATTACK` is more dangerous *and* more fragile until the new part regenerates hits (if it ever does — see [Open questions](#open-questions)).
 
-**Confirmed.**
+## Time limit and tie-break
 
-- `BodyPart` objects spawn on the central river over time.
-- Stepping a creep onto a `BodyPart` adds that part to the creep's body.
-- Each `BodyPart` has `ticksToDecay` and disappears if not collected.
-- **No other growth mechanism exists in basic CTF.** No boosts, no containers, no economy.
+> *The time limit is 2000 ticks. When the time limit is expired, the player controlling more flags wins. In case of a tie, the match is declared a draw.*
 
-Implications we'll design around:
+- 2000 ticks confirmed. Read it from `arenaInfo.ticksLimit` in code regardless.
+- Tick-out tie-break: **flag count.** Equal counts = draw.
+- Strategic implication: holding ≥2 flags at tick 2000 is a guaranteed non-loss (you're at minimum 2 vs 2 = draw, vs 2 > 1 = win). The 2-flag floor is a real fallback objective when winning is out of reach.
 
-- Each role part added without a corresponding `MOVE` increases fatigue per move-tick. A ranger that picks up `RANGED_ATTACK` without `MOVE` becomes slower than the squad it's in.
-- Body part *types* on the river vary. A grab decision is not just "is it close" — it's "does this part make this creep more useful to the squad's current play."
-- The river is contested. Two creeps trying for the same part is a real situation; either pre-arbitrate or accept that one will waste a move.
+## API quirks worth knowing
 
-## Match length
+(General Arena API, not CTF-specific.)
 
-**Confirmed at the API level, value not.**
+- No `Memory`. Module-level state persists within a match only; matches start cold.
+- Object IDs are stable within a match; objects can disappear (decay, death). Don't cache references across ticks — re-resolve via `getObjectsByPrototype`.
+- Intents queue per tick; last-write-wins for the same intent type on the same object. Some intent pairs are mutually exclusive.
+- Per-tick CPU is wall-clock at `arenaInfo.cpuTimeLimit`; tick 1 has a separate larger budget at `arenaInfo.cpuTimeLimitFirstTick`. Use `getCpuTime()` (nanoseconds) to measure.
+- `Date` is disabled in player code as of Season 2.
 
-- Match cap is `arenaInfo.ticksLimit`. Always read it; don't hard-code.
-- Basic arenas were ~2000 ticks per community sources. Advanced was 10,000.
+## Flag identification
 
-**Open question:** what happens at the limit if neither flag is captured? Tie? Loss for both? Decided by remaining HP / creep count? **Not publicly documented.** Verify in-client by intentionally stalling a match.
+The in-app sample uses:
 
-## Vision
+```js
+var enemyFlag = getObjectsByPrototype(Flag).find(object => !object.my);
+```
 
-**Confirmed.** Full vision of the entire map. No fog of war.
+Note `!object.my` is true for **both** enemy flags (`my === false`) **and** neutral flags (`my === undefined`). The sample treats them as equivalent capture targets — and the win condition supports this: any non-our flag is a capture candidate, and capturing a neutral flag both takes a flag off the table for the enemy *and* gives us tower control.
 
-(Devs noted in the alpha they might experiment with FoW later. No 2026 announcement reversing full-vision found.)
+Helpers in our code should be tri-state-aware:
 
-## Resources, economy, structures
+- `getMyFlags()` — `my === true` (we can own multiple)
+- `getEnemyFlags()` — `my === false`
+- `getNeutralFlags()` — `my === undefined`
+- `getCaptureTargets()` — anything where `!my` (matches the in-app sample)
 
-**Confirmed.** None of the following exist in basic CTF:
+## Open questions
 
-- No `Source`
-- No `StructureSpawn`
-- No `StructureContainer` / `StructureExtension`
-- No construction sites
+These are unresolved as of writing. We answer them empirically inside the client, not by guessing further. The v0 strategy logs the data we need to answer them.
 
-The only structures present are the home towers and the flags.
+1. **Do any of the 14 starting creeps have `CARRY` or `WORK` parts?** The body-part icons on the arena card show only R/A/H/M — `CARRY` is not depicted as river-spawnable. If starting creeps don't have `CARRY` and the river doesn't spawn it, **tower-charging may be impossible** in basic CTF, and our entire economy story collapses. **First in-client log to capture: tick-1 body composition for all 14 creeps.**
 
-## Towers
+2. **Are all body-part types actually spawnable on the river?** The icons show 4 types but the description doesn't claim those are exhaustive. Log every `BodyPart` we observe across the first 5 matches.
 
-**Confirmed at API level, behaviour partially.**
+3. **Do new (zero-hit) body parts regenerate hits over time?** If yes, on what cadence? If no, they're effectively single-use power-ups. Watch a creep's body across consecutive ticks after it picks up a part.
 
-Each side has 2 static towers near the home flag. Standard tower constants apply (`TOWER_RANGE`, `TOWER_POWER_ATTACK`, falloff, cooldown).
+4. **Tower behaviour:** once charged, do they auto-fire on hostile creeps in range, or do they expose intents we drive (`tower.attack(target)` / `tower.heal(target)` / `tower.repair(target)`)? Both are plausible in Screeps idiom.
 
-**Open question:** towers are static — can they be ordered to attack/heal/repair as in classic Screeps, or are they autonomous? We should test, but assume autonomous defense unless proven otherwise.
+5. **Container energy regeneration:** do containers refill, or is the starting energy all there is? Affects whether economy is a sustained ferry job or a one-off charge.
 
-## API quirks
+6. **Path/visual obstacles around mid-map flags.** The screenshots show varied terrain. Are mid-map flags reachable by direct path from both sides equally? Worth measuring distance/cost from spawn to each non-my flag on tick 1.
 
-**Confirmed across multiple sources.**
+7. **Does stepping on a flag instantly capture it,** or does it require ending the tick on the flag tile? Affects path planning around the capture.
 
-- `Memory` does not exist. Module-level state persists within a match only; every match starts cold.
-- Object IDs are stable within a match; objects can disappear. Re-resolve via `getObjectsByPrototype` per tick rather than caching references across ticks.
-- Intents are queued, not immediate. Last-write-wins for the same intent type on the same object in one tick. Some intent pairs are mutually exclusive.
-- Per-tick CPU budget is wall-clock, exposed via `arenaInfo.cpuTimeLimit`. Tick 1 has a separate (larger) budget at `arenaInfo.cpuTimeLimitFirstTick`. Use `getCpuTime()` (nanoseconds) to measure.
-- `Date` is disabled in player code as of Season 2 (per the end-of-Season-1 patch notes).
-- `spawnCreep` returns an object even on failure — verify by checking next tick.
+8. **Replay zip schema** on macOS. Where is the cache, what's inside, can we parse it. Phase 1 work.
 
-## Open questions to resolve in-client
-
-These are unresolved as of writing. We answer them empirically inside the client, not by guessing further:
-
-1. **Tie-break rule** when `ticksLimit` is reached. Stall a match deliberately to find out.
-2. **Exact starting creep mix** among the 14. Read it from `MY_CREEPS` on tick 1 and log it across the first 5 matches to confirm consistency.
-3. **Tower behaviour.** Are they truly autonomous, or do they expose intents we can drive?
-4. **Body-part spawn cadence.** Rate, type distribution, and any pattern (random vs. zoned). Log every `BodyPart` observed for the first 10 matches.
-5. **Replay zip schema.** Stable across season patches? Documented anywhere? We need this for the evaluator.
-6. **Matchmaker behaviour.** Does it bias toward similar-rank opponents early? Affects how much signal we get from the first 20 ranked games.
-7. **Season 2 rule changes.** Beyond the disabled `Date` object, are any CTF rules different from the 2022-era write-ups?
+9. **Matchmaker behaviour** — does it bias toward similar-rank opponents? Affects how much signal we get from the first 20 ranked games.
 
 The answers will be added back into this doc as they're resolved, with the source (replay ID, tick, observation) noted.
 
-## Sources
+## Source
 
-Primary:
+- In-app description on the Capture the Flag (Basic level, β) arena card, observed Apr 2026.
 
-- Typed schema: [screepers/typed-screeps-arena (season-beta)](https://github.com/screepers/typed-screeps-arena/tree/season-beta)
-- JS starter: [screepers/screeps-arena-javascript-starter](https://github.com/screepers/screeps-arena-javascript-starter)
-
-Community:
-
-- Designing a Screeps Arena bot — [qnz.one, July 2022](https://qnz.one/2022/07/25/designing-a-screeps-arena-bot/)
-- Screeps Arena notes — [Jon Winsley](https://jonwinsley.com/notes/screeps-arena)
-- Steam discussion / changelogs — [Screeps: Arena on Steam](https://steamcommunity.com/app/1137320/discussions/)
+This file supersedes any community write-up or 2022-era source on basic CTF mechanics — those described an earlier design that the current arena does not match.
