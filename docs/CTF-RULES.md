@@ -1,6 +1,10 @@
 # Capture the Flag — verified rules and open questions
 
-**Source of truth:** the in-app description on the Capture the Flag (Basic level, β) arena card. Rules below match that description verbatim where quoted; community/2022-era write-ups are *not* authoritative for this version of the arena and have been removed from this doc. Anything still uncertain is in the [Open questions](#open-questions) section.
+**Sources of truth, in order:**
+1. The in-app arena card description (rules, win condition, time limit).
+2. **First-tick init logs from a Test match (Apr 2026)** — exact body compositions, map layout, container starting energy, flag/tower positions. See [Verified from logs](#verified-from-logs) for the data.
+
+Rules quoted from the in-app description are reproduced verbatim. Community/2022-era write-ups are *not* authoritative and have been removed from this doc. Anything still uncertain is in the [Open questions](#open-questions) section.
 
 ## Win condition
 
@@ -15,11 +19,44 @@ So:
 
 ## Map and starting setup
 
-- 14 creeps per side with **mixed body compositions** ("different bodies" — read the actual mix from `MY_CREEPS` on tick 1, don't assume).
-- **Per side at base:** 1 flag + 1 *empty* tower + (presumed) containers near the tower with energy.
-- **Mid-map, neutral:** **2 additional flags**, each linked to its own tower. Containers near every tower.
-- **Map total: 4 flags** (mine, enemy's, 2 neutrals) and **4 towers** (mine, enemy's, 2 neutrals at mid-map flags).
-- A swamp **river** runs across the middle. Body-part objects spawn on it.
+**Confirmed from Apr 2026 init logs.** The map is **diagonally symmetric** along the SW↔NE river axis. Every match opens with the same layout (relative to which corner is yours):
+
+```
+NW ── my base ──────────── neutral NE
+ (3,3)   flag              (84,15) flag
+ (2,2)   tower             (83,16) tower
+ (1,1)   container 1000e   (87,12) container 1000e
+                  \\
+            r i v e r
+                    \\
+neutral SW ──────────── enemy base SE
+(16,83) flag               (96,96) flag
+(17,82) tower              (97,97) tower
+(13,86) container 1000e    (98,98) container 1000e
+```
+
+- **14 creeps per side**, body composition table below.
+- **4 flags total**: yours (corner), enemy's (opposite corner), 2 neutrals on the off-diagonal corners.
+- **4 towers** — one per flag, all empty at match start.
+- **4 containers** — one near each tower, **each with 1000 energy at match start.**
+- Both neutral flags are roughly equidistant (~80 tiles Chebyshev) from both bases, each across the river from its closer base.
+- A swamp **river** cuts across the SW↔NE diagonal. Body-part objects spawn on it.
+
+### Starting bodies (verified, both sides identical)
+
+| Role | Count | Body | Notes |
+|---|---|---|---|
+| Worker | 2 | `3×CARRY + 6×MOVE` (9 parts) | The economy ferry. Move-balanced even on swamp. |
+| Healer | 4 | `6×HEAL + 6×MOVE` (12 parts) | Move-balanced on plain; swamp halves their speed. |
+| Ranger | 4 | `6×RANGED_ATTACK + 6×MOVE` (12 parts) | Move-balanced on plain. |
+| Melee | 4 | `3×ATTACK + 3×TOUGH + 6×MOVE` (12 parts) | **TOUGH means melee are tanks, not strikers.** 3 ATTACK = only 90 dmg/tick at range 1. |
+
+Strategic implications baked into the bodies:
+
+- **Workers carry 150 energy** (3 × CARRY_CAPACITY=50). One worker fills a tower in roughly one trip.
+- **Melee are damage absorbers, not damage dealers.** Their job is to soak fire for the rangers behind them, not to win fights.
+- **All creeps have 6 MOVE** — full mobility on plain terrain. Cohesion is achievable at no fatigue cost.
+- **Both sides are identical.** Until river-growth diverges them, all wins come from positioning, sequencing, and strategic choices.
 
 ## Towers — must be charged
 
@@ -27,17 +64,17 @@ So:
 
 Every tower starts empty. A tower with no energy is inert. To use a tower:
 
-1. A creep with `CARRY` capacity must `withdraw` energy from a nearby container.
+1. A creep with `CARRY` capacity must `withdraw` energy from a nearby container. Confirmed: every starting side has 2 workers with `3×CARRY + 6×MOVE`, and each container starts with 1000 energy.
 2. That creep must `transfer` the energy into the tower.
-3. The tower can then be commanded (or auto-fires? — see [Open questions](#open-questions)).
+3. The tower then either auto-fires on hostiles in range *or* requires intent calls (`tower.attack(target)` / `tower.heal(target)` / `tower.repair(target)`) — **still open, see [Open questions](#open-questions)**.
 
-Implication: tower-charging tempo is a strategic dimension. The first side to charge their home tower has a significant defensive advantage; the first side to charge a neutral tower wins the mid-map fight around that flag.
+Implication: tower-charging tempo is a strategic dimension. The first side to charge their home tower has a significant defensive advantage; the first side to charge a neutral tower wins the mid-map fight around that flag. Containers are one tile from their tower, so a single worker can fully charge a tower in ~5 ticks.
 
 ## Body parts on the river
 
 > *There are items called BodyPart that are generated sometimes in the middle of the river. When your creep steps on such an object, an additional body part gets added to its body **(with zero hits)**.*
 
-- Spawn types confirmed in the description's icons: **R (RANGED_ATTACK), A (ATTACK), H (HEAL), M (MOVE)**. `CARRY` and `WORK` are *not* shown — see [Open questions](#open-questions).
+- Spawn types confirmed in the description's icons: **R (RANGED_ATTACK), A (ATTACK), H (HEAL), M (MOVE)**. `CARRY`, `WORK`, and `TOUGH` are *not* shown as river-spawnable. (TOUGH is present on starting melee creeps but apparently can't be picked up post-hoc.) Open: whether the icons are exhaustive — see [Open questions](#open-questions).
 - New parts are added at **zero hits**. They contribute to body length and effective capability but do *not* tank damage. The next damage instance can destroy them.
 - Strategic implication: a creep that just picked up a `RANGED_ATTACK` is more dangerous *and* more fragile until the new part regenerates hits (if it ever does — see [Open questions](#open-questions)).
 
@@ -76,32 +113,37 @@ Helpers in our code should be tri-state-aware:
 - `getNeutralFlags()` — `my === undefined`
 - `getCaptureTargets()` — anything where `!my` (matches the in-app sample)
 
+## Verified from logs
+
+The following questions, previously open, were resolved by the **Apr 2026 Test match (Test 1, vs idle System v1, 205 ticks)**. The init log line is preserved verbatim in `journal/2026-04-27.md` for posterity.
+
+1. **CARRY in starting bodies.** ✅ Resolved: **2 workers per side**, body `3×CARRY + 6×MOVE`. Tower-charging is real and central.
+2. **Starting creep mix.** ✅ Resolved: 4 ranger / 4 healer / 4 melee / 2 worker per side. Specific bodies in the table above.
+3. **Map and object positions.** ✅ Resolved: see the diagram above.
+4. **Container starting energy.** ✅ Resolved: 1000 each. (Whether they refill remains open.)
+5. **Capture mechanic.** ✅ Resolved: stepping a creep onto a flag tile and ending the tick there captures it. v0 won by ending tick 205 on the enemy flag.
+
 ## Open questions
 
-These are unresolved as of writing. We answer them empirically inside the client, not by guessing further. The v0 strategy logs the data we need to answer them.
+Still unresolved. Answered empirically as we play.
 
-1. **Do any of the 14 starting creeps have `CARRY` or `WORK` parts?** The body-part icons on the arena card show only R/A/H/M — `CARRY` is not depicted as river-spawnable. If starting creeps don't have `CARRY` and the river doesn't spawn it, **tower-charging may be impossible** in basic CTF, and our entire economy story collapses. **First in-client log to capture: tick-1 body composition for all 14 creeps.**
+1. **Do charged towers auto-fire on hostiles in range, or do they require intent calls (`tower.attack(target)`)?** The v0 idle-opponent test does not isolate this — kills could be tower auto-fire OR rangers reaching the enemy corner. Resolve via a controlled test: charge our home tower, sit our squad on the home flag, observe whether nearby hostiles get hit without us calling any tower intent.
 
-2. **Are all body-part types actually spawnable on the river?** The icons show 4 types but the description doesn't claim those are exhaustive. Log every `BodyPart` we observe across the first 5 matches.
+2. **Tower ownership transfer when a flag is captured.** When we capture a neutral flag, does its linked tower become ours? The win condition counts flags, not towers, so this is strategically separate. Add tower-ownership-by-tick to telemetry to verify.
 
-3. **Do new (zero-hit) body parts regenerate hits over time?** If yes, on what cadence? If no, they're effectively single-use power-ups. Watch a creep's body across consecutive ticks after it picks up a part.
+3. **Are all body-part types actually spawnable on the river?** Icons show R/A/H/M. The description doesn't claim those are exhaustive. Log every `BodyPart` we observe across early matches.
 
-4. **Tower behaviour:** once charged, do they auto-fire on hostile creeps in range, or do they expose intents we drive (`tower.attack(target)` / `tower.heal(target)` / `tower.repair(target)`)? Both are plausible in Screeps idiom.
+4. **Do new (zero-hit) body parts regenerate hits?** If yes, on what cadence; if no, they're single-use. Watch a creep's body across consecutive ticks after a pickup.
 
-5. **Container energy regeneration:** do containers refill, or is the starting energy all there is? Affects whether economy is a sustained ferry job or a one-off charge.
+5. **Container energy regeneration.** Containers start with 1000. Do they refill over time, or is that a one-time pool? Affects whether economy is sustained or one-off.
 
-6. **Path/visual obstacles around mid-map flags.** The screenshots show varied terrain. Are mid-map flags reachable by direct path from both sides equally? Worth measuring distance/cost from spawn to each non-my flag on tick 1.
+6. **Replay zip schema** on macOS. Where is the cache, what's inside, parseable how. Phase 1 work — cleanly orthogonal to gameplay.
 
-7. **Does stepping on a flag instantly capture it,** or does it require ending the tick on the flag tile? Affects path planning around the capture.
-
-8. **Replay zip schema** on macOS. Where is the cache, what's inside, can we parse it. Phase 1 work.
-
-9. **Matchmaker behaviour** — does it bias toward similar-rank opponents? Affects how much signal we get from the first 20 ranked games.
-
-The answers will be added back into this doc as they're resolved, with the source (replay ID, tick, observation) noted.
+7. **Matchmaker behaviour** — does it bias toward similar-rank opponents? Affects how much signal we get from the first 20 ranked games.
 
 ## Source
 
 - In-app description on the Capture the Flag (Basic level, β) arena card, observed Apr 2026.
+- First-tick init log from Test match against System v1 (idle), Apr 2026 — preserved in `journal/2026-04-27.md`.
 
 This file supersedes any community write-up or 2022-era source on basic CTF mechanics — those described an earlier design that the current arena does not match.
