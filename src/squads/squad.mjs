@@ -5,6 +5,7 @@
 // they run runWorker with that task instead of squad-relative micro.
 
 import { ROLE } from "../intel/body.mjs";
+import { pickSquadFocusTarget } from "../intel/target.mjs";
 import { runRanger } from "../micro/ranger.mjs";
 import { runHealer } from "../micro/healer.mjs";
 import { runMelee } from "../micro/melee.mjs";
@@ -24,6 +25,9 @@ export function assignFerryTask(squad, creep, task) {
 export function runSquad(squad, snapshot) {
   squad.centroid = centroid(squad.members);
   squad.spread = maxSpread(squad.members);
+  // Pre-compute one focus target the whole squad will prioritize this tick.
+  // Rangers/melee can fall back to local picks if focus isn't in their range.
+  squad.focusTarget = pickSquadFocusTarget(squad.members, snapshot.enemyCreeps, snapshot, 3);
 
   for (const creep of squad.members) {
     const ferry = squad.ferryTasks.get(creep.id);

@@ -17,6 +17,9 @@ import { assignContestFlag } from "./plays/contest-flag.mjs";
 import { assignDefendFlag } from "./plays/defend-flag.mjs";
 import { planChargeTower } from "./plays/charge-tower.mjs";
 import { operateAllTowers } from "./plays/operate-towers.mjs";
+import { assignHarvestRiver } from "./plays/harvest-river.mjs";
+import { shouldHarvest } from "../intel/harvest.mjs";
+import { detectRushedFlag } from "./plays/defend-or-push.mjs";
 import { pickStrategy, readEnemyComp } from "./strategy.mjs";
 
 let _initLogged = false;
@@ -26,6 +29,8 @@ export function tick(options = {}) {
   const cohesionEnforced = options.cohesionEnforced === true;
   const cohesionRadius = options.cohesionRadius;
   const operateTowers = options.operateTowers === true;
+  const harvestRiver = options.harvestRiver === true;
+  const harvesterCount = options.harvesterCount ?? 2;
   const snapshot = buildSnapshot();
 
   if (!_initLogged) {
@@ -41,12 +46,35 @@ export function tick(options = {}) {
 
   // Sentry: first available healer among non-carry creeps.
   const sentry = nonCarry.find((c) => c._role === ROLE.HEALER) ?? null;
-  const main = nonCarry.filter((c) => c !== sentry);
+  let main = nonCarry.filter((c) => c !== sentry);
+
+  // Optional harvester squad — peel off N creeps to scoop body parts on the
+  // river when conditions are stable (≥2 flags, no active rush, enough spare
+  // creeps, parts available). Recall conditions trigger automatically next
+  // tick when conditions change.
+  let harvesters = [];
+  if (harvestRiver) {
+    const stable = shouldHarvest(snapshot, { minSpareCreeps: 8 }) && !detectRushedFlag(snapshot);
+    if (stable) {
+      // Prefer 1 ranger + 1 healer for sustainability; fall back to any.
+      const ranger = main.find((c) => c._role === ROLE.RANGER);
+      const healer = main.find((c) => c._role === ROLE.HEALER);
+      if (ranger) harvesters.push(ranger);
+      if (healer && harvesters.length < harvesterCount) harvesters.push(healer);
+      // Fill remaining slots with any spare combat creeps.
+      for (const c of main) {
+        if (harvesters.length >= harvesterCount) break;
+        if (!harvesters.includes(c)) harvesters.push(c);
+      }
+      main = main.filter((c) => !harvesters.includes(c));
+    }
+  }
 
   // Build squads.
   const squads = [];
   if (main.length > 0) squads.push(makeSquad("main", main));
   if (sentry) squads.push(makeSquad("sentry", [sentry]));
+  if (harvesters.length > 0) squads.push(makeSquad("harvesters", harvesters));
   // Carryers form their own squad even if all on ferry duty, so combat-falling-through
   // works if there are no charge tasks available.
   if (carryers.length > 0) squads.push(makeSquad("workers", carryers));
@@ -57,6 +85,7 @@ export function tick(options = {}) {
     if (cohesionRadius !== undefined) squad.cohesionRadius = cohesionRadius;
     if (squad.name === "main") mainPlay(squad, snapshot);
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
+    else if (squad.name === "harvesters") assignHarvestRiver(squad, snapshot);
     else if (squad.name === "workers") {
       // Workers: assign each ferry task to its creep, then any unassigned worker
       // falls through to a contest-flag advance for combat help.
@@ -91,6 +120,9 @@ export function tick(options = {}) {
         enemiesIn25: (snapshot.findInRange(f, snapshot.enemyCreeps, 25) || []).length,
       })),
       mainObjective: squads.find((s) => s.name === "main")?.objective?.kind ?? null,
+      // v6 telemetry.
+      harvesterCount: squads.find((s) => s.name === "harvesters")?.members?.length ?? 0,
+      bodyPartsAvailable: snapshot.bodyParts?.length ?? 0,
     });
   }
 

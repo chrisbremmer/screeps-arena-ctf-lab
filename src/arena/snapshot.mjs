@@ -1,7 +1,7 @@
 // Per-tick world snapshot. The only module that touches the live `game` API on the read path.
 // Everything above this layer consumes the returned object — keeps higher layers unit-testable.
 
-import { utils } from "game";
+import { prototypes, utils } from "game";
 import {
   getMyFlags,
   getEnemyFlags,
@@ -15,6 +15,19 @@ import {
   getAllContainers,
 } from "./rules.mjs";
 import { classifyRole, countParts, PART } from "../intel/body.mjs";
+
+// BodyPart prototype is CTF-specific and may not exist in all arenas. Probe
+// at runtime; degrade to an empty list if unavailable.
+function getBodyParts() {
+  try {
+    if (prototypes && prototypes.BodyPart) {
+      return utils.getObjectsByPrototype(prototypes.BodyPart) || [];
+    }
+  } catch {
+    /* fall through */
+  }
+  return [];
+}
 
 export function buildSnapshot() {
   const tick = utils.getTicks();
@@ -34,6 +47,7 @@ export function buildSnapshot() {
     enemyTowers: getEnemyTowers(),
     neutralTowers: getNeutralTowers(),
     containers: getAllContainers(),
+    bodyParts: getBodyParts(),
     range: utils.getRange,
     findClosestByPath: utils.findClosestByPath,
     findInRange: utils.findInRange,

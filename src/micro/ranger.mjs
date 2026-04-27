@@ -7,7 +7,14 @@ import { squadMoveTarget } from "../squads/formation.mjs";
 
 export function runRanger(creep, snapshot, squad) {
   const inRange = snapshot.findInRange(creep, snapshot.enemyCreeps, RANGED_ATTACK_RANGE);
-  const target = pickTarget(inRange);
+  // Focus-fire: if the squad's chosen target is in our range, shoot it (so
+  // all rangers focus the same creep). Otherwise pick our best local target.
+  let target = null;
+  if (squad?.focusTarget && inRange.includes(squad.focusTarget)) {
+    target = squad.focusTarget;
+  } else {
+    target = pickTarget(inRange);
+  }
   if (target) creep.rangedAttack(target);
 
   // Threat-driven positioning: if any enemy is within KITE_RANGE - 1, step back.
