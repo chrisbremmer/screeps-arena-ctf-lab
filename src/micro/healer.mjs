@@ -2,6 +2,7 @@
 
 import { moveToward } from "./move.mjs";
 import { HEAL_RANGE, RANGED_HEAL_RANGE } from "../arena/rules.mjs";
+import { squadMoveTarget } from "../squads/formation.mjs";
 
 export function runHealer(creep, snapshot, squad) {
   const allies = squad?.members?.filter((c) => c.id !== creep.id) ?? snapshot.myCreeps;
@@ -28,5 +29,6 @@ export function runHealer(creep, snapshot, squad) {
     return;
   }
 
-  if (squad?.advanceTarget) moveToward(creep, squad.advanceTarget);
+  const dest = squadMoveTarget(squad);
+  if (dest) moveToward(creep, dest);
 }

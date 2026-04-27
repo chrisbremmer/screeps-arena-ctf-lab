@@ -16,12 +16,15 @@ import { makeSquad, runSquad, assignFerryTask } from "../squads/squad.mjs";
 import { assignContestFlag } from "./plays/contest-flag.mjs";
 import { assignDefendFlag } from "./plays/defend-flag.mjs";
 import { planChargeTower } from "./plays/charge-tower.mjs";
+import { operateAllTowers } from "./plays/operate-towers.mjs";
 import { pickStrategy, readEnemyComp } from "./strategy.mjs";
 
 let _initLogged = false;
 
 export function tick(options = {}) {
   const mainPlay = options.mainPlay ?? assignContestFlag;
+  const cohesionEnforced = options.cohesionEnforced === true;
+  const operateTowers = options.operateTowers === true;
   const snapshot = buildSnapshot();
 
   if (!_initLogged) {
@@ -49,6 +52,7 @@ export function tick(options = {}) {
 
   // Plays.
   for (const squad of squads) {
+    squad.cohesionEnforced = cohesionEnforced;
     if (squad.name === "main") mainPlay(squad, snapshot);
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
     else if (squad.name === "workers") {
@@ -61,6 +65,11 @@ export function tick(options = {}) {
     }
     runSquad(squad, snapshot);
   }
+
+  // Active tower operation. Each charged my-tower fires on the nearest enemy
+  // in range. Independent of squad logic; runs after squad dispatch so the
+  // tower call doesn't conflict with movement intents.
+  if (operateTowers) operateAllTowers(snapshot);
 
   if (snapshot.tick % 50 === 0) {
     logTick(snapshot.tick, {

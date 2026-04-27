@@ -11,6 +11,37 @@ Each entry is:
 > **Counter.** What beats it, so we know what to watch for.
 > **Status.** `theorized` (no data yet), `tested` (has match evidence), `meta` (currently active in baseline).
 
+## Strategic doctrine (post v0/v1 data)
+
+Refined after the v1 ranked batch (~1W-9L) made the actual win condition concrete.
+
+### The 2-2 equilibrium
+
+Both sides will capture one neutral by tick 100, landing at 2-2-0 flags. This is forced by the map: the two neutral flags are equidistant from both bases, with the natural shortest paths going to *opposite* neutrals. There is no opening that prevents this. Verified empirically across 10+ ranked matches.
+
+### The win condition is mathematically expensive
+
+From 2-2, winning requires capturing one of the enemy's two flags — both 100+ tiles deep into enemy territory, across the river, under their tower's potential range-20 fire. Equal-strength assault loses on tempo. **The push-for-third-flag is what's killing us:** we lose 9 of 14 creeps for 1 flag, and the 5-vs-13 remnant gets dismantled.
+
+### The draw floor matters
+
+Tick-out tie-break is by flag count; equal counts = draw. **Holding 2 flags through tick 2000 is a guaranteed non-loss.** A draw at the bottom of the ladder is ELO-neutral, where a loss is ELO-negative. Forcing draws while we figure out how to actually win is a positive-EV strategy.
+
+### Tower fire is dominant
+
+A charged tower at TOWER_OPTIMAL_RANGE does **1000 dmg per shot** (per `typings/game/constants.d.ts`), falling off linearly to 0 at range 20. A 12-part creep has 1200 HP. **One tower shot near-kills any unboosted creep.** Towers + cohesive squad creates an effective fortress within ~20 tiles of any flag we own.
+
+### The fortress strategy
+
+- **Phase 1 (tick 0–~30):** Workers fast-charge home tower. Squad moves cohesively toward our nearest neutral. Sentry healer at home flag.
+- **Phase 2 (tick 30–~100):** Capture the close neutral cohesively. Workers move to charge that tower next.
+- **Phase 3 (tick 100–~1500):** Defend, don't push. Two charged towers create overlapping kill zones. Hold 2-2.
+- **Phase 4 (tick 1500–2000):** If body-part growth has tipped the math, *consider* pushing. Otherwise hold for the draw.
+
+### What this displaces from the older playbook
+
+Earlier entries assumed we should always be capturing flags aggressively. With data, we know that's wrong at our skill tier. The goal is **flag floor**, not **flag maximization**. Aggressive expansion belongs to a later phase when our creeps are individually stronger from river growth.
+
 ## Economy and tower control
 
 ### Charge home tower as priority 1

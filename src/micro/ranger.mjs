@@ -3,6 +3,7 @@
 import { moveToward, stepAway } from "./move.mjs";
 import { pickTarget } from "../intel/target.mjs";
 import { KITE_RANGE, RANGED_ATTACK_RANGE } from "../arena/rules.mjs";
+import { squadMoveTarget } from "../squads/formation.mjs";
 
 export function runRanger(creep, snapshot, squad) {
   const inRange = snapshot.findInRange(creep, snapshot.enemyCreeps, RANGED_ATTACK_RANGE);
@@ -16,6 +17,6 @@ export function runRanger(creep, snapshot, squad) {
     return;
   }
 
-  // Otherwise advance toward the squad's current target.
-  if (squad?.advanceTarget) moveToward(creep, squad.advanceTarget);
+  const dest = squadMoveTarget(squad);
+  if (dest) moveToward(creep, dest);
 }
