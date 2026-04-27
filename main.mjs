@@ -5,4 +5,4 @@
 // different variant. Do not import strategy directly here; let the variant
 // module own that decision.
 
-export { loop } from "./variants/v3-fortress-advancing.mjs";
+export { loop } from "./variants/v4-push-with-advantage.mjs";
