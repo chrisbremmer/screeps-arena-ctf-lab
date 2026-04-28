@@ -11,10 +11,24 @@ export const DEFAULT_COHESION_RADIUS = 7;
 // enforced and the squad's spread exceeds the cohesion radius, route the
 // creep toward the centroid — stragglers catch up while the front holds
 // position. Otherwise the creep proceeds toward the squad's advance target.
-export function squadMoveTarget(squad) {
+//
+// Loose-advance mode (squad.looseAdvance + a snapshot): cohesion convergence
+// only fires when an enemy is within squad.contactRange of any squad member.
+// Out of contact, the squad ignores spread and proceeds straight to the
+// advance target — closes the tempo gap during pure-advance phases.
+export function squadMoveTarget(squad, snapshot) {
   if (!squad) return null;
   const radius = squad.cohesionRadius ?? DEFAULT_COHESION_RADIUS;
   if (squad.cohesionEnforced && squad.centroid && squad.spread > radius) {
+    if (squad.looseAdvance && snapshot && Array.isArray(squad.members)) {
+      const range = squad.contactRange ?? 8;
+      const enemies = snapshot.enemyCreeps || [];
+      const findInRange = snapshot.findInRange;
+      const inContact = squad.members.some(
+        (m) => (findInRange ? findInRange(m, enemies, range) : []).length > 0,
+      );
+      if (!inContact) return squad.advanceTarget ?? null;
+    }
     return squad.centroid;
   }
   return squad.advanceTarget ?? null;

@@ -24,6 +24,6 @@ export function runRanger(creep, snapshot, squad) {
     return;
   }
 
-  const dest = squadMoveTarget(squad);
-  if (dest) moveToward(creep, dest);
+  const dest = squadMoveTarget(squad, snapshot);
+  if (dest) moveToward(creep, dest, snapshot);
 }

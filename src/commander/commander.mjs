@@ -31,6 +31,8 @@ export function tick(options = {}) {
   const operateTowers = options.operateTowers === true;
   const harvestRiver = options.harvestRiver === true;
   const harvesterCount = options.harvesterCount ?? 2;
+  const looseAdvance = options.looseAdvance === true;
+  const contactRange = options.contactRange ?? 8;
   const snapshot = buildSnapshot();
 
   if (!_initLogged) {
@@ -83,6 +85,10 @@ export function tick(options = {}) {
   for (const squad of squads) {
     squad.cohesionEnforced = cohesionEnforced;
     if (cohesionRadius !== undefined) squad.cohesionRadius = cohesionRadius;
+    if (looseAdvance) {
+      squad.looseAdvance = true;
+      squad.contactRange = contactRange;
+    }
     if (squad.name === "main") mainPlay(squad, snapshot);
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
     else if (squad.name === "harvesters") assignHarvestRiver(squad, snapshot);
