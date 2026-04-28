@@ -16,7 +16,7 @@ export function runWorker(creep, snapshot, task) {
   if (!carrying) {
     // Withdraw from container.
     if (snapshot.range(creep, container) > 1) {
-      moveToward(creep, container, snapshot);
+      moveToward(creep, container);
     } else {
       creep.withdraw(container, RESOURCE_ENERGY);
     }
@@ -25,7 +25,7 @@ export function runWorker(creep, snapshot, task) {
 
   // Transfer to tower.
   if (snapshot.range(creep, tower) > 1) {
-    moveToward(creep, tower, snapshot);
+    moveToward(creep, tower);
   } else {
     creep.transfer(tower, RESOURCE_ENERGY);
   }

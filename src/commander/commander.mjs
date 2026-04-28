@@ -18,7 +18,6 @@ import { assignDefendFlag } from "./plays/defend-flag.mjs";
 import { planChargeTower } from "./plays/charge-tower.mjs";
 import { operateAllTowers } from "./plays/operate-towers.mjs";
 import { assignHarvestRiver } from "./plays/harvest-river.mjs";
-import { assignPincer } from "./plays/pincer.mjs";
 import { shouldHarvest } from "../intel/harvest.mjs";
 import { detectRushedFlag } from "./plays/defend-or-push.mjs";
 import { pickStrategy, readEnemyComp } from "./strategy.mjs";
@@ -32,9 +31,6 @@ export function tick(options = {}) {
   const operateTowers = options.operateTowers === true;
   const harvestRiver = options.harvestRiver === true;
   const harvesterCount = options.harvesterCount ?? 2;
-  const looseAdvance = options.looseAdvance === true;
-  const contactRange = options.contactRange ?? 8;
-  const pincerEnabled = options.pincer === true;
   const snapshot = buildSnapshot();
 
   if (!_initLogged) {
@@ -51,18 +47,6 @@ export function tick(options = {}) {
   // Sentry: first available healer among non-carry creeps.
   const sentry = nonCarry.find((c) => c._role === ROLE.HEALER) ?? null;
   let main = nonCarry.filter((c) => c !== sentry);
-
-  // Optional pincer squad — 1 ranger + 1 healer detached at match start to
-  // capture the off-side neutral while main takes the close one. Active until
-  // both pincer creeps die or the match ends.
-  let pincer = [];
-  if (pincerEnabled) {
-    const ranger = main.find((c) => c._role === ROLE.RANGER);
-    const healer = main.find((c) => c._role === ROLE.HEALER);
-    if (ranger) pincer.push(ranger);
-    if (healer) pincer.push(healer);
-    main = main.filter((c) => !pincer.includes(c));
-  }
 
   // Optional harvester squad — peel off N creeps to scoop body parts on the
   // river when conditions are stable (≥2 flags, no active rush, enough spare
@@ -86,11 +70,9 @@ export function tick(options = {}) {
     }
   }
 
-  // Build squads. Order matters: main is processed first so pincer can read
-  // main's advanceTarget and pick the OTHER neutral.
+  // Build squads.
   const squads = [];
   if (main.length > 0) squads.push(makeSquad("main", main));
-  if (pincer.length > 0) squads.push(makeSquad("pincer", pincer));
   if (sentry) squads.push(makeSquad("sentry", [sentry]));
   if (harvesters.length > 0) squads.push(makeSquad("harvesters", harvesters));
   // Carryers form their own squad even if all on ferry duty, so combat-falling-through
@@ -101,15 +83,7 @@ export function tick(options = {}) {
   for (const squad of squads) {
     squad.cohesionEnforced = cohesionEnforced;
     if (cohesionRadius !== undefined) squad.cohesionRadius = cohesionRadius;
-    if (looseAdvance) {
-      squad.looseAdvance = true;
-      squad.contactRange = contactRange;
-    }
     if (squad.name === "main") mainPlay(squad, snapshot);
-    else if (squad.name === "pincer") {
-      const mainSquad = squads.find((s) => s.name === "main");
-      assignPincer(squad, snapshot, mainSquad?.advanceTarget);
-    }
     else if (squad.name === "sentry") assignDefendFlag(squad, snapshot);
     else if (squad.name === "harvesters") assignHarvestRiver(squad, snapshot);
     else if (squad.name === "workers") {
@@ -149,9 +123,6 @@ export function tick(options = {}) {
       // v6 telemetry.
       harvesterCount: squads.find((s) => s.name === "harvesters")?.members?.length ?? 0,
       bodyPartsAvailable: snapshot.bodyParts?.length ?? 0,
-      // v8 telemetry.
-      pincerCount: squads.find((s) => s.name === "pincer")?.members?.length ?? 0,
-      pincerObjective: squads.find((s) => s.name === "pincer")?.objective?.kind ?? null,
     });
   }
 
@@ -206,7 +177,6 @@ function logFirstTick(snapshot) {
       energy: c.store?.energy ?? c.store?.["energy"] ?? 0,
     })),
     myCarryers: snapshot.myCreeps.filter((c) => c._hasCarry).length,
-    roadCount: snapshot.roadCount ?? 0,
     bodies,
     enemyBodies,
   });

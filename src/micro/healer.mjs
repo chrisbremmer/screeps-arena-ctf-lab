@@ -40,13 +40,13 @@ export function runHealer(creep, snapshot, squad) {
       creep.heal(target);
     } else if (range <= RANGED_HEAL_RANGE) {
       creep.rangedHeal(target);
-      moveToward(creep, target, snapshot);
+      moveToward(creep, target);
     } else {
-      moveToward(creep, target, snapshot);
+      moveToward(creep, target);
     }
     return;
   }
 
-  const dest = squadMoveTarget(squad, snapshot);
-  if (dest) moveToward(creep, dest, snapshot);
+  const dest = squadMoveTarget(squad);
+  if (dest) moveToward(creep, dest);
 }

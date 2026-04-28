@@ -25,17 +25,3 @@ export function findCapturedFlag(snapshot) {
 function cheb(a, b) {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
-
-// Is the given flag within `range` (Chebyshev) of any tower in the list?
-// Used to filter out push targets sitting under enemy tower fire — pushing
-// for the enemy home flag at range 1 of their tower is nearly suicidal.
-// Pure: takes any objects with .x/.y; uses snapshot.range if provided for
-// consistency with the live game's range function.
-export function flagInsideTowerRange(flag, towers, snapshot, range = 20) {
-  if (!flag || !towers || towers.length === 0) return false;
-  const rangeFn = snapshot?.range ?? cheb;
-  for (const t of towers) {
-    if (rangeFn(t, flag) <= range) return true;
-  }
-  return false;
-}

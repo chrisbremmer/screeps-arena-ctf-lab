@@ -14,7 +14,6 @@ import {
   getNeutralTowers,
   getAllContainers,
 } from "./rules.mjs";
-import { getCostMatrix, getRoadCount } from "./cost-matrix.mjs";
 import { classifyRole, countParts, PART } from "../intel/body.mjs";
 
 // BodyPart prototype is CTF-specific and may not exist in all arenas. Probe
@@ -49,8 +48,6 @@ export function buildSnapshot() {
     neutralTowers: getNeutralTowers(),
     containers: getAllContainers(),
     bodyParts: getBodyParts(),
-    costMatrix: getCostMatrix(),
-    roadCount: getRoadCount(),
     range: utils.getRange,
     findClosestByPath: utils.findClosestByPath,
     findInRange: utils.findInRange,

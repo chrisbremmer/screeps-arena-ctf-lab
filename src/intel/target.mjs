@@ -4,12 +4,6 @@
 import { ROLE } from "./body.mjs";
 import { classifyRole } from "./body.mjs";
 
-// Healer priority weight: healers extend the lifetime of every other enemy
-// creep at 12 HP/tick adjacent (or 4 ranged), so killing them denies the
-// most healing per kill. A weight of 0.6 means a full-HP healer ties with
-// a 40%-HP non-healer; aggressive but justified by the asymmetry in value.
-const HEALER_PRIORITY = 0.6;
-
 export function pickTarget(candidates) {
   if (!candidates || candidates.length === 0) return null;
   let best = null;
@@ -17,7 +11,8 @@ export function pickTarget(candidates) {
   for (const c of candidates) {
     const hpPct = c.hits / c.hitsMax;
     const role = c._role || classifyRole(c);
-    const score = hpPct - (role === ROLE.HEALER ? HEALER_PRIORITY : 0);
+    // Lower is better. Healers get a small bonus so they win ties.
+    const score = hpPct - (role === ROLE.HEALER ? 0.1 : 0);
     if (score < bestScore) {
       bestScore = score;
       best = c;

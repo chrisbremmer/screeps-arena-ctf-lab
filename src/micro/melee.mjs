@@ -16,12 +16,12 @@ export function runMelee(creep, snapshot, squad) {
   // No-one in melee range. If the squad is in cohesion mode, prioritize closing
   // ranks over chasing the closest enemy — chasing is what got isolated melee
   // creeps killed in v0/v1. Otherwise close on the nearest enemy.
-  const cohesionDest = squadMoveTarget(squad, snapshot);
+  const cohesionDest = squadMoveTarget(squad);
   if (squad?.cohesionEnforced && cohesionDest) {
-    moveToward(creep, cohesionDest, snapshot);
+    moveToward(creep, cohesionDest);
     return;
   }
   const nearby = snapshot.findClosestByPath(creep, snapshot.enemyCreeps);
   const dest = nearby || cohesionDest;
-  if (dest) moveToward(creep, dest, snapshot);
+  if (dest) moveToward(creep, dest);
 }
