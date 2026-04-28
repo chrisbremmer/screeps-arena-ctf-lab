@@ -11,6 +11,7 @@ import { CostMatrix } from "game/path-finder";
 
 let _cached = null;
 let _attempted = false;
+let _roadCount = 0;
 
 export function getCostMatrix() {
   if (_attempted) return _cached;
@@ -21,6 +22,7 @@ export function getCostMatrix() {
     if (prototypes?.StructureRoad && utils?.getObjectsByPrototype) {
       const roads = utils.getObjectsByPrototype(prototypes.StructureRoad) || [];
       for (const r of roads) cm.set(r.x, r.y, 1);
+      _roadCount = roads.length;
     }
     _cached = cm;
     return cm;
@@ -29,7 +31,12 @@ export function getCostMatrix() {
   }
 }
 
+export function getRoadCount() {
+  return _roadCount;
+}
+
 export function _resetCostMatrixCache() {
   _cached = null;
   _attempted = false;
+  _roadCount = 0;
 }
