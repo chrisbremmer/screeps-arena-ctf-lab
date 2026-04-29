@@ -303,6 +303,8 @@ These are unresolved as of writing. We answer them empirically inside the client
 
 ## Status
 
-Phase 0. Scaffolding committed; v0 baseline pushed; nothing fielded yet.
+**Iteration paused** through 2026-05-02 (Arena S2 CTF finals). Active variant on disk: `v6-harvest-and-focus` (last positive variant, +3 over 10). Current rating: ~189, down from a peak of ~307 after a three-variant losing streak (v7 -2, v8 -65, v9 -51). The src tree is reverted to commit `a8235d7` — see `CLAUDE.md` § Current state for the full trajectory and the v9 silent-drift retro that motivated the pause.
+
+The project's public-corpus phase is exhausted: Winsley + LittleSound is the public ceiling, and three variants derived from that material all regressed. The next signal worth iterating against will come from the finals broadcast, which is the first observable top-tier CTF play of the season.
 
 — Capt Munchies

@@ -8,9 +8,9 @@ Competitive Screeps Arena Season 2 **Capture the Flag** bot (`Capt Munchies`), p
 
 Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` → `docs/ARCHITECTURE.md` → `docs/ITERATION-LOOP.md` → `docs/PLAYBOOK.md` → `docs/AGENTIC-WORKFLOWS.md`.
 
-## Current state (last updated 2026-04-27)
+## Current state (last updated 2026-04-28)
 
-**Active variant:** v6-harvest-and-focus. **Current rating:** ~307 (started placement at 445, dropped through v1-v3, climbing back via v4-v6).
+**Active variant:** v6-harvest-and-focus (reverted from v9). **Current rating:** ~189. **Iteration paused** pending Arena S2 CTF finals on **2026-05-02** — that's the first opportunity to observe top-tier CTF play; the public corpus before then is empty and we've exhausted it (Winsley + LittleSound is the ceiling, three derivatives all lost).
 
 **Variant trajectory (record / Δ rating per 10 matches):**
 
@@ -23,6 +23,14 @@ Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` 
 | v4-push-with-advantage | 4W-5L-1D, +2 | first net-positive: push at material advantage ≥4 |
 | v5-rush-defense | 4W-4L-2D, +5 | LittleSound's defense state + telemetry |
 | v6-harvest-and-focus | 5W-5L, +3 | river harvest + squad focus fire + healer triage |
+| v7-tempo | 4W-4L-2D, -2 | road-aware pathing + loose cohesion; net flat |
+| v8-omnibus | 0W-9L-1?, -65 | bundled cost-matrix + ranger mass + healer prio + tower-zone; collapsed, reverted |
+| v9-mass-and-heal | 0W-8L-2D, -51 | inherited silent v7/v8 src drift after main.mjs-only revert; deep regression |
+| **revert to v6 (a8235d7)** | — | full src + main.mjs restored to last-positive state; on disk: v7/v8/v9/v10 kept for diff reference |
+
+**Critical retro finding from v9:** when v8 was reverted earlier, only `main.mjs` was flipped — the v7/v8 src-level changes (cost-matrix passed to every `moveTo`, ranger mass-attack, healer-priority -0.6, tower-zone filter) were silently retained. So "v6 active" since the v8 commit was not the v6 that scored +3, and v9 inherited that drift. **Lesson: a variant revert must restore `src/` to the target commit, not just rewrite `main.mjs`.**
+
+**In-flight (uncommitted) work:** v10-rolling-fortress scaffolded on disk (`variants/v10-rolling-fortress.mjs`, `src/commander/plays/anchor-and-hold.mjs`, `src/micro/fortress.mjs`, `src/squads/fortress-formation.mjs`, `tests/v10-rolling-fortress.test.mjs`, plus a small `src/commander/commander.mjs` diff to wire in fortress squads). **Do not field** until post-finals research informs whether this hypothesis is worth a slot.
 
 **Confirmed mechanics (don't re-investigate):**
 - Towers do **not** auto-fire — manual `tower.attack(target)` required.
@@ -34,14 +42,15 @@ Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` 
 - Match starts use a randomized corner: sometimes NW (mine flag at 3,3), sometimes SE (mine at 96,96). The bot is corner-agnostic via `findHomeFlag` (Chebyshev distance to home tower).
 
 **Known unsolved problems:**
-- **Repeat losses to specific bots.** `WarNeverChanges v10` beat us twice in the v6 batch — that bot has a counter we haven't identified. Recommended: open the in-client replay viewer for one of those losses; the tactical pattern will be visible immediately and is invisible in tick logs.
+- **Repeat losses to specific bots.** `WarNeverChanges v10` beat us twice in the v6 batch — that bot has a counter we haven't identified. Watching the replay is the highest-leverage next step.
 - **Fast rushes (~300 tick losses)** still happen vs aggressive opponents like `promiscuousemu v2`. Rush-defense recall fires but doesn't always hold.
 - **Push-then-recapture cycle** in some long losses: `2-1-1 → 3-1-0 → 2-2-0 → 3-1-0` ending at 1-3.
+- **Bundled-variant blast radius.** v8 and v9 each combined multiple changes; both regressed catastrophically and gave us no signal about which component was at fault. One change at a time, always.
 
-**Open v7 candidates** (in journal, ordered by my prior on impact):
-1. **Watch the WarNeverChanges replay** — high info value, low effort.
-2. **Disable push** (threshold = ∞) — convert push-failure losses to draws/holds.
-3. **Field v6 longer** — current rate of +3 to +5 per 10 matches compounds; sample size matters.
+**What's queued for after the finals:**
+1. **Watch the finals.** First observable top-tier CTF play; expect to learn more from one finals match than from another 30 ranked games at 189.
+2. **Watch the WarNeverChanges replay** — repeat-loss pattern is invisible in tick logs.
+3. **Re-evaluate v10-rolling-fortress** against whatever the finals reveal; ship only if the hypothesis still holds.
 
 **Known unknowns I'd want answered eventually:**
 - The 4× TOWER_POWER_ATTACK bug — is real damage 1000 or 250? Test by logging enemy `hits` before/after a single tower shot.
@@ -52,6 +61,7 @@ Read in order if you're new to the project: `README.md` → `docs/CTF-RULES.md` 
 - Each new variant gets ~10 ranked matches before evaluation.
 - Pipe console output through `pbpaste | npm run report -- --journal --opponent "<name>"` after each match (or batch).
 - The screenshot of "10 rating games" is the source of truth for W/L; tick logs sometimes cross match boundaries when the bot module isn't reloaded between matches.
+- **Reverts must touch `src/`, not just `main.mjs`.** Re-run `npm run variant -- v6-harvest-and-focus` (which rewrites `main.mjs`) *and* `git checkout <good-commit> -- src/` to fully restore.
 
 ## How to be useful here
 
